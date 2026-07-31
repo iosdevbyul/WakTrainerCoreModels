@@ -1,13 +1,12 @@
+// WakTrainerCoreModels / Package.swift
 // swift-tools-version: 6.0
-// The swift-tools-version declares the minimum version of Swift required to build this package.
-
 import PackageDescription
 
 let package = Package(
     name: "WakTrainerCoreModels",
-    // iOS 13 이상 지원 명시
     platforms: [
-        .iOS(.v13)
+        .iOS(.v13),
+        .macOS(.v13)
     ],
     products: [
         .library(
@@ -15,13 +14,9 @@ let package = Package(
             targets: ["WakTrainerCoreModels"]
         ),
     ],
-    dependencies: [
-        // 단독 모듈이므로 의존성 없음
-    ],
     targets: [
         .target(
-            name: "WakTrainerCoreModels",
-            dependencies: []
+            name: "WakTrainerCoreModels"
         ),
         .testTarget(
             name: "WakTrainerCoreModelsTests",
