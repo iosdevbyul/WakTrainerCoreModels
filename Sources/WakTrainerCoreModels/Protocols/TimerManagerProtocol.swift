@@ -8,7 +8,6 @@
 import Foundation
 import Combine
 
-@MainActor
 public protocol TimerManagerProtocol: ObservableObject {
     var elapsedTime: TimeInterval { get }
     var isRunning: Bool { get }

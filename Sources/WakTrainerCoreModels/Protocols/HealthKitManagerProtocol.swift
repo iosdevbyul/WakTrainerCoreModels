@@ -6,22 +6,18 @@
 //
 
 import Foundation
-import Combine
 
-@MainActor
-public protocol HealthKitManagerProtocol: ObservableObject {
-    /// 현재 수집된 헬스 데이터 스냅샷
-    var currentSnapshot: HealthSnapshot { get }
-    
+// 같은 WakTrainerCoreModels 모듈 내에 존재하므로 별도 import 필요 없음
+public protocol HealthKitManagerProtocol: Sendable {
     /// 권한 승인 여부
-    var isAuthorized: Bool { get }
+    var isAuthorized: Bool { get async }
     
     /// HealthKit 데이터 읽기 권한 요청
-    func requestAuthorization(completion: @escaping @Sendable @MainActor (Bool) -> Void)
+    func requestAuthorization() async throws -> Bool
     
-    /// 실시간 데이터 관측 시작
-    func startObservingData()
+    /// 실시간 데이터 관측 시작 (AsyncStream을 통해 백그라운드에서 데이터를 받아옴)
+    func startObservingData() -> AsyncStream<HealthSnapshot>
     
     /// 실시간 데이터 관측 중단
-    func stopObservingData()
+    func stopObservingData() async
 }

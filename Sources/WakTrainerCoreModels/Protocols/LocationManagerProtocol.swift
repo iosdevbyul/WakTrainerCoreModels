@@ -9,7 +9,6 @@ import Foundation
 import CoreLocation
 import Combine
 
-@MainActor
 public protocol LocationManagerProtocol: ObservableObject {
     /// 현재 사용자 위치
     var userLocation: CLLocation? { get }
