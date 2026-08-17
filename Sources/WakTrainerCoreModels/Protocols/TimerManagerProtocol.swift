@@ -18,7 +18,6 @@ public protocol TimerManagerProtocol: ObservableObject {
     func stop()
 }
 
-// 공통 연산 프로퍼티는 protocol extension으로 기본 구현을 제공할 수 있습니다.
 public extension TimerManagerProtocol {
     var formattedTime: String {
         let totalSeconds = Int(elapsedTime)

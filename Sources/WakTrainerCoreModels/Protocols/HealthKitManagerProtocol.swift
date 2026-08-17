@@ -7,7 +7,6 @@
 
 import Foundation
 
-// 같은 WakTrainerCoreModels 모듈 내에 존재하므로 별도 import 필요 없음
 public protocol HealthKitManagerProtocol: Sendable {
     /// 권한 승인 여부
     var isAuthorized: Bool { get async }
