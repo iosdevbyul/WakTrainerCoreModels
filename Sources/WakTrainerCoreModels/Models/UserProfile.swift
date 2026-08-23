@@ -31,11 +31,3 @@ public struct UserProfile: Codable, Equatable, Sendable {
         case other = "기타"
     }
 }
-
-// MARK: - User Profile Manager Protocol
-public protocol UserProfileManager: AnyObject {
-    var profile: UserProfile? { get }
-    
-    func saveProfile(_ profile: UserProfile)
-    func loadProfile() -> UserProfile?
-}
