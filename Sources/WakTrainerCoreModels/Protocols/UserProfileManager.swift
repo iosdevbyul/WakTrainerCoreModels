@@ -8,8 +8,8 @@
 import Foundation
 
 public protocol UserProfileManager: Sendable {
-    var profile: UserProfile? { get async }
+    var profile: UserProfile? { get }
     
-    func saveProfile(_ profile: UserProfile) async
-    func loadProfile() async -> UserProfile?
+    func saveProfile(_ profile: UserProfile)
+    func loadProfile() -> UserProfile?
 }
