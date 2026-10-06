@@ -8,9 +8,18 @@ let package = Package(
         .macOS(.v13)
     ],
     products: [
-        .library(name: "WakTrainerCoreModels", targets: ["WakTrainerCoreModels"])
+        .library(
+            name: "WakTrainerCoreModels",
+            targets: ["WakTrainerCoreModels"]
+        )
     ],
     targets: [
-        .target(name: "WakTrainerCoreModels")
+        .target(
+            name: "WakTrainerCoreModels"
+        ),
+        .testTarget(
+            name: "WakTrainerCoreModelsTests",
+            dependencies: ["WakTrainerCoreModels"]
+        )
     ]
 )
