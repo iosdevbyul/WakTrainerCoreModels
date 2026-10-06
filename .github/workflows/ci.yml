@@ -2,10 +2,18 @@ name: CI
 
 on:
   push:
+    branches:
+      - main
+
   pull_request:
     branches:
       - main
+
   workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -57,8 +65,18 @@ jobs:
 
       - name: Build WakTrainerCoreModels
         run: |
-          xcodebuild             -scheme WakTrainerCoreModels             -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}"             -configuration Debug             CODE_SIGNING_ALLOWED=NO             build
+          xcodebuild \
+            -scheme WakTrainerCoreModels \
+            -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}" \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            build
 
       - name: Run WakTrainerCoreModels tests
         run: |
-          xcodebuild             -scheme WakTrainerCoreModels             -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}"             -configuration Debug             CODE_SIGNING_ALLOWED=NO             test
+          xcodebuild \
+            -scheme WakTrainerCoreModels \
+            -destination "platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}" \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            test
