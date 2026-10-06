@@ -7,13 +7,16 @@
 
 import Foundation
 
-/// 운동 세션 내 개별 운동 구간을 나타내는 모델 (예: 15:40 ~ 22:42 스쿼트)
+/// Legacy exercise time segment.
+///
+/// New workout records should use `WorkoutExerciseRecord`, which can preserve
+/// strength sets and cardio intervals in addition to the time range.
 public struct ExerciseSegment: Identifiable, Codable, Equatable {
     public let id: UUID
-    public var name: String            // 운동 이름 (예: "벤치프레스", "스쿼트")
-    public let startTime: Date         // 해당 구간 시작 시간
-    public var endTime: Date?          // 해당 구간 종료 시간
-    
+    public var name: String
+    public let startTime: Date
+    public var endTime: Date?
+
     public init(
         id: UUID = UUID(),
         name: String,
@@ -25,10 +28,15 @@ public struct ExerciseSegment: Identifiable, Codable, Equatable {
         self.startTime = startTime
         self.endTime = endTime
     }
-    
-    /// 해당 구간의 소요 시간(초) 계산
+
+    /// Duration is only final once the segment has an end time.
+    public var completedDuration: TimeInterval? {
+        guard let endTime else { return nil }
+        return endTime.timeIntervalSince(startTime)
+    }
+
+    @available(*, deprecated, message: "Use completedDuration. Live duration belongs in session/UI state.")
     public var duration: TimeInterval {
-        let end = endTime ?? Date()
-        return end.timeIntervalSince(startTime)
+        completedDuration ?? 0
     }
 }
