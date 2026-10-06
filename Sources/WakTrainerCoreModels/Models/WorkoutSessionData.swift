@@ -8,7 +8,10 @@
 import Foundation
 import CoreLocation
 
-/// 전체 운동 세션 완료 데이터를 나타내는 최상위 모델
+/// Legacy workout-session payload retained for source compatibility.
+///
+/// New workout recording and reporting code should use `WorkoutSession`.
+@available(*, deprecated, message: "Use WorkoutSession for new workout recording and reporting.")
 public struct WorkoutSessionData: Identifiable, Codable {
     public let id: UUID
     public let startDate: Date
@@ -17,12 +20,12 @@ public struct WorkoutSessionData: Identifiable, Codable {
     public var exerciseSegments: [ExerciseSegment]
     public var healthSummary: HealthSnapshot
     public var routeLocations: [CLLocationCoordinate2D]
-    
+
     enum CodingKeys: String, CodingKey {
         case id, startDate, endDate, totalDuration, exerciseSegments, healthSummary
         case routeLocations = "route_locations"
     }
-    
+
     public init(
         id: UUID = UUID(),
         startDate: Date,
@@ -40,7 +43,7 @@ public struct WorkoutSessionData: Identifiable, Codable {
         self.healthSummary = healthSummary
         self.routeLocations = routeLocations
     }
-    
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
@@ -49,11 +52,17 @@ public struct WorkoutSessionData: Identifiable, Codable {
         totalDuration = try container.decode(TimeInterval.self, forKey: .totalDuration)
         exerciseSegments = try container.decode([ExerciseSegment].self, forKey: .exerciseSegments)
         healthSummary = try container.decode(HealthSnapshot.self, forKey: .healthSummary)
-        
-        let coords = try container.decode([[Double]].self, forKey: .routeLocations)
-        routeLocations = coords.map { CLLocationCoordinate2D(latitude: $0[0], longitude: $0[1]) }
+
+        let coordinates = try container.decode([[Double]].self, forKey: .routeLocations)
+        routeLocations = coordinates.compactMap { values in
+            guard values.count >= 2 else { return nil }
+            return CLLocationCoordinate2D(
+                latitude: values[0],
+                longitude: values[1]
+            )
+        }
     }
-    
+
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
@@ -62,8 +71,8 @@ public struct WorkoutSessionData: Identifiable, Codable {
         try container.encode(totalDuration, forKey: .totalDuration)
         try container.encode(exerciseSegments, forKey: .exerciseSegments)
         try container.encode(healthSummary, forKey: .healthSummary)
-        
-        let coords = routeLocations.map { [$0.latitude, $0.longitude] }
-        try container.encode(coords, forKey: .routeLocations)
+
+        let coordinates = routeLocations.map { [$0.latitude, $0.longitude] }
+        try container.encode(coordinates, forKey: .routeLocations)
     }
 }

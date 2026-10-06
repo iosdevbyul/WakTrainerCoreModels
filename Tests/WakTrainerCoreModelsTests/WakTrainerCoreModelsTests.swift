@@ -5,27 +5,34 @@ import Testing
 
 @Suite("WakTrainerCoreModels 테스트")
 struct WakTrainerCoreModelsTests {
-    
-    @Test("ExerciseSegment 소요 시간(duration) 계산 검증")
-    func testExerciseSegmentDuration() {
-        // Given
+
+    @Test("ExerciseSegment 완료 소요 시간 계산 검증")
+    func testExerciseSegmentCompletedDuration() {
         let startTime = Date()
-        let endTime = startTime.addingTimeInterval(900) // 15분 (900초) 후
-        
-        // When
+        let endTime = startTime.addingTimeInterval(900)
+
         let segment = ExerciseSegment(
             name: "벤치프레스",
             startTime: startTime,
             endTime: endTime
         )
-        
-        // Then
-        #expect(segment.duration == 900)
+
+        #expect(segment.completedDuration == 900)
     }
-    
+
+    @Test("진행 중 ExerciseSegment는 확정 소요 시간을 만들지 않음")
+    func testExerciseSegmentWithoutEndDateHasNoCompletedDuration() {
+        let segment = ExerciseSegment(
+            name: "스쿼트",
+            startTime: Date(),
+            endTime: nil
+        )
+
+        #expect(segment.completedDuration == nil)
+    }
+
     @Test("HealthSnapshot 기본값 및 커스텀 값 생성 검증")
     func testHealthSnapshotInitialization() {
-        // Given & When
         let defaultSnapshot = HealthSnapshot()
         let customSnapshot = HealthSnapshot(
             heartRate: 145.0,
@@ -33,43 +40,128 @@ struct WakTrainerCoreModelsTests {
             activeCalories: 250.5,
             distance: 1200.0
         )
-        
-        // Then
+
         #expect(defaultSnapshot.heartRate == 0.0)
         #expect(customSnapshot.heartRate == 145.0)
         #expect(customSnapshot.activeCalories == 250.5)
     }
-    
-    @Test("WorkoutSessionData JSON Codable (인코딩/디코딩 및 위치 좌표) 검증")
-    func testWorkoutSessionDataCodable() throws {
-        // Given
-        let startDate = Date()
-        let segment = ExerciseSegment(name: "스쿼트", startTime: startDate)
-        let snapshot = HealthSnapshot(heartRate: 130.0, activeCalories: 150.0)
-        let route = [
-            CLLocationCoordinate2D(latitude: 37.5665, longitude: 126.9780) // 서울시청 좌표
-        ]
-        
-        let originalSession = WorkoutSessionData(
-            startDate: startDate,
-            totalDuration: 1800,
-            exerciseSegments: [segment],
-            healthSummary: snapshot,
-            routeLocations: route
+
+    @Test("WorkoutSession은 운동 정체성, 시간, 세트, HealthKit 샘플, 경로를 보존")
+    func testWorkoutSessionCodable() throws {
+        let startDate = Date(timeIntervalSince1970: 1_800_000_000)
+        let endDate = startDate.addingTimeInterval(3600)
+
+        let identity = WorkoutIdentity(
+            workoutID: "bench-press",
+            name: "Bench Press",
+            category: "strength",
+            type: .staticWorkout
         )
-        
-        // When (JSON 인코딩 후 다시 디코딩)
+
+        let set = StrengthSetRecord(
+            setNumber: 1,
+            weightKilograms: 80,
+            repetitions: 8,
+            startDate: startDate,
+            endDate: startDate.addingTimeInterval(45),
+            restDuration: 90,
+            isCompleted: true
+        )
+
+        let exercise = WorkoutExerciseRecord(
+            exerciseID: "bench-press",
+            name: "Bench Press",
+            kind: .strength,
+            startDate: startDate,
+            endDate: endDate,
+            strengthSets: [set]
+        )
+
+        let heartRateSample = WorkoutHealthMetricSample(
+            metric: .heartRate,
+            startDate: startDate,
+            endDate: startDate.addingTimeInterval(5),
+            value: 142,
+            unit: "count/min",
+            sourceName: "Apple Watch",
+            sourceBundleIdentifier: "com.apple.health"
+        )
+
+        let health = WorkoutHealthData(
+            summary: WorkoutHealthSummary(
+                averageHeartRate: 132,
+                minimumHeartRate: 88,
+                maximumHeartRate: 168,
+                activeCalories: 410
+            ),
+            samples: [heartRateSample]
+        )
+
+        let routePoint = WorkoutRoutePoint(
+            timestamp: startDate,
+            latitude: 37.5665,
+            longitude: 126.9780,
+            altitude: 31,
+            speedMetersPerSecond: 2.8,
+            horizontalAccuracy: 4
+        )
+
+        let session = WorkoutSession(
+            workout: identity,
+            timing: WorkoutTiming(
+                startDate: startDate,
+                endDate: endDate,
+                elapsedDuration: 3600,
+                activeDuration: 3300,
+                pausedDuration: 300
+            ),
+            exerciseRecords: [exercise],
+            health: health,
+            route: [routePoint]
+        )
+
+        let encoded = try JSONEncoder().encode(session)
+        let decoded = try JSONDecoder().decode(WorkoutSession.self, from: encoded)
+
+        #expect(decoded == session)
+        #expect(decoded.exerciseRecords.first?.strengthSets.first?.volumeKilograms == 640)
+        #expect(decoded.health.samples(for: .heartRate).count == 1)
+        #expect(decoded.route.first?.coordinate.latitude == 37.5665)
+    }
+
+    @Test("Legacy WorkoutSessionData는 잘못된 route 좌표를 안전하게 무시")
+    func testLegacyWorkoutSessionDataIgnoresMalformedCoordinate() throws {
+        let id = UUID()
+        let startDate = Date(timeIntervalSince1970: 1_800_000_000)
         let encoder = JSONEncoder()
-        let decoder = JSONDecoder()
-        
-        let data = try encoder.encode(originalSession)
-        let decodedSession = try decoder.decode(WorkoutSessionData.self, from: data)
-        
-        // Then
-        #expect(decodedSession.id == originalSession.id)
-        #expect(decodedSession.exerciseSegments.first?.name == "스쿼트")
-        #expect(decodedSession.healthSummary.heartRate == 130.0)
-        #expect(decodedSession.routeLocations.count == 1)
-        #expect(decodedSession.routeLocations.first?.latitude == 37.5665)
+
+        struct LegacyPayload: Encodable {
+            let id: UUID
+            let startDate: Date
+            let endDate: Date?
+            let totalDuration: TimeInterval
+            let exerciseSegments: [ExerciseSegment]
+            let healthSummary: HealthSnapshot
+            let route_locations: [[Double]]
+        }
+
+        let payload = LegacyPayload(
+            id: id,
+            startDate: startDate,
+            endDate: nil,
+            totalDuration: 0,
+            exerciseSegments: [],
+            healthSummary: HealthSnapshot(),
+            route_locations: [
+                [37.5665],
+                [37.5665, 126.9780]
+            ]
+        )
+
+        let data = try encoder.encode(payload)
+        let decoded = try JSONDecoder().decode(WorkoutSessionData.self, from: data)
+
+        #expect(decoded.routeLocations.count == 1)
+        #expect(decoded.routeLocations.first?.longitude == 126.9780)
     }
 }
