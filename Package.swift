@@ -11,6 +11,10 @@ let package = Package(
         .library(name: "WakTrainerCoreModels", targets: ["WakTrainerCoreModels"])
     ],
     targets: [
-        .target(name: "WakTrainerCoreModels")
+        .target(name: "WakTrainerCoreModels"),
+        .testTarget(
+            name: "WakTrainerCoreModelsTests",
+            dependencies: ["WakTrainerCoreModels"]
+        )
     ]
 )
