@@ -6,11 +6,23 @@ public enum WorkoutExerciseRecordKind: String, Codable, Sendable {
     case general
 }
 
+public enum StrengthEquipment: String, Codable, CaseIterable, Sendable {
+    case barbell
+    case dumbbell
+    case bodyweight
+    case machine
+    case kettlebell
+    case cable
+    case resistanceBand
+    case other
+}
+
 public struct WorkoutExerciseRecord: Identifiable, Codable, Equatable, Sendable {
     public let id: UUID
     public let exerciseID: String?
     public var name: String
     public let kind: WorkoutExerciseRecordKind
+    public let strengthEquipment: StrengthEquipment?
     public let startDate: Date
     public var endDate: Date?
     public var strengthSets: [StrengthSetRecord]
@@ -21,6 +33,7 @@ public struct WorkoutExerciseRecord: Identifiable, Codable, Equatable, Sendable 
         exerciseID: String? = nil,
         name: String,
         kind: WorkoutExerciseRecordKind,
+        strengthEquipment: StrengthEquipment? = nil,
         startDate: Date,
         endDate: Date? = nil,
         strengthSets: [StrengthSetRecord] = [],
@@ -30,6 +43,7 @@ public struct WorkoutExerciseRecord: Identifiable, Codable, Equatable, Sendable 
         self.exerciseID = exerciseID
         self.name = name
         self.kind = kind
+        self.strengthEquipment = strengthEquipment
         self.startDate = startDate
         self.endDate = endDate
         self.strengthSets = strengthSets
