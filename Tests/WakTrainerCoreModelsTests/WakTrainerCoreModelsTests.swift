@@ -72,6 +72,7 @@ struct WakTrainerCoreModelsTests {
             exerciseID: "bench-press",
             name: "Bench Press",
             kind: .strength,
+            strengthEquipment: .barbell,
             startDate: startDate,
             endDate: endDate,
             strengthSets: [set]
@@ -124,6 +125,7 @@ struct WakTrainerCoreModelsTests {
         let decoded = try JSONDecoder().decode(WorkoutSession.self, from: encoded)
 
         #expect(decoded == session)
+        #expect(decoded.exerciseRecords.first?.strengthEquipment == .barbell)
         #expect(decoded.exerciseRecords.first?.strengthSets.first?.volumeKilograms == 640)
         #expect(decoded.health.samples(for: .heartRate).count == 1)
         #expect(decoded.route.first?.coordinate.latitude == 37.5665)
