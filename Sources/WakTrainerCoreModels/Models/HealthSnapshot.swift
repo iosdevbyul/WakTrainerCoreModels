@@ -41,10 +41,15 @@ public struct HealthSnapshot: Codable, Equatable {
         stepCount = try container.decode(Double.self, forKey: .stepCount)
         activeCalories = try container.decode(Double.self, forKey: .activeCalories)
         distance = try container.decode(Double.self, forKey: .distance)
-        sampleEndDates = try container.decodeIfPresent(
-            [WorkoutHealthMetric: Date].self,
+        let savedDates = try container.decodeIfPresent(
+            [String: Date].self,
             forKey: .sampleEndDates
         ) ?? [:]
+        sampleEndDates = Dictionary(
+            uniqueKeysWithValues: savedDates.compactMap { key, value in
+                WorkoutHealthMetric(rawValue: key).map { ($0, value) }
+            }
+        )
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -54,7 +59,10 @@ public struct HealthSnapshot: Codable, Equatable {
         try container.encode(activeCalories, forKey: .activeCalories)
         try container.encode(distance, forKey: .distance)
         if !sampleEndDates.isEmpty {
-            try container.encode(sampleEndDates, forKey: .sampleEndDates)
+            let keyedDates = Dictionary(
+                uniqueKeysWithValues: sampleEndDates.map { ($0.key.rawValue, $0.value) }
+            )
+            try container.encode(keyedDates, forKey: .sampleEndDates)
         }
     }
 }
