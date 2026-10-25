@@ -1,28 +1,68 @@
-//
-//  HealthSnapshot.swift
-//  WakTrainerCoreModels
-//
-//  Created by COMATOKI on 2026-07-30.
-//
-
 import Foundation
 
-/// HealthKit 등을 통해 수집된 건강 및 활동 측정 지표 데이터
+/// Live HealthKit metric values. The optional sample end times represent
+/// acquisition instants, not the time a snapshot was emitted or uploaded.
 public struct HealthSnapshot: Codable, Equatable {
-    public var heartRate: Double         // 심박수 (BPM)
-    public var stepCount: Double        // 걸음 수
-    public var activeCalories: Double     // 소모 칼로리 (kcal)
-    public var distance: Double           // 이동 거리 (m)
-    
+    public var heartRate: Double
+    public var stepCount: Double
+    public var activeCalories: Double
+    public var distance: Double
+
+    /// Latest contributing sample end time for each metric, as an absolute Date.
+    /// Aggregate values (steps, calories, distance) are not single samples;
+    /// their timestamp denotes the most recent contributing sample.
+    public var sampleEndDates: [WorkoutHealthMetric: Date]
+
     public init(
         heartRate: Double = 0.0,
         stepCount: Double = 0.0,
         activeCalories: Double = 0.0,
-        distance: Double = 0.0
+        distance: Double = 0.0,
+        sampleEndDates: [WorkoutHealthMetric: Date] = [:]
     ) {
         self.heartRate = heartRate
         self.stepCount = stepCount
         self.activeCalories = activeCalories
         self.distance = distance
+        self.sampleEndDates = sampleEndDates
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case heartRate
+        case stepCount
+        case activeCalories
+        case distance
+        case sampleEndDates
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        heartRate = try container.decode(Double.self, forKey: .heartRate)
+        stepCount = try container.decode(Double.self, forKey: .stepCount)
+        activeCalories = try container.decode(Double.self, forKey: .activeCalories)
+        distance = try container.decode(Double.self, forKey: .distance)
+        let savedDates = try container.decodeIfPresent(
+            [String: Date].self,
+            forKey: .sampleEndDates
+        ) ?? [:]
+        sampleEndDates = Dictionary(
+            uniqueKeysWithValues: savedDates.compactMap { key, value in
+                WorkoutHealthMetric(rawValue: key).map { ($0, value) }
+            }
+        )
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(heartRate, forKey: .heartRate)
+        try container.encode(stepCount, forKey: .stepCount)
+        try container.encode(activeCalories, forKey: .activeCalories)
+        try container.encode(distance, forKey: .distance)
+        if !sampleEndDates.isEmpty {
+            let keyedDates = Dictionary(
+                uniqueKeysWithValues: sampleEndDates.map { ($0.key.rawValue, $0.value) }
+            )
+            try container.encode(keyedDates, forKey: .sampleEndDates)
+        }
     }
 }
