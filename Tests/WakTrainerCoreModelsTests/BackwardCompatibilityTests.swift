@@ -5,6 +5,48 @@ import WakTrainerCoreModels
 
 @Suite("Backward compatibility regression tests")
 struct BackwardCompatibilityTests {
+    @Test("Legacy live health snapshots decode without measurement metadata")
+    func legacyHealthSnapshotDecoding() throws {
+        let legacy = Data(
+            #"{"heartRate":142,"stepCount":150,"activeCalories":32,"distance":480}"#.utf8
+        )
+        let snapshot = try JSONDecoder().decode(HealthSnapshot.self, from: legacy)
+        #expect(snapshot.heartRate == 142)
+        #expect(snapshot.sampleEndDates.isEmpty)
+        let encoded = try JSONEncoder().encode(snapshot)
+        let object = try #require(
+            JSONSerialization.jsonObject(with: encoded) as? [String: Any]
+        )
+        #expect(object["sampleEndDates"] == nil)
+    }
+
+    @Test("Health snapshot preserves metric acquisition instants across serialization")
+    func healthSnapshotSampleEndDatesRoundTrip() throws {
+        let measuredAt = try #require(
+            ISO8601DateFormatter().date(from: "2026-10-24T23:00:00Z")
+        )
+        let snapshot = HealthSnapshot(
+            heartRate: 142,
+            stepCount: 150,
+            activeCalories: 32,
+            distance: 480,
+            sampleEndDates: [
+                .heartRate: measuredAt,
+                .stepCount: measuredAt.addingTimeInterval(-30)
+            ]
+        )
+        let encoded = try JSONEncoder().encode(snapshot)
+        let object = try #require(
+            JSONSerialization.jsonObject(with: encoded) as? [String: Any]
+        )
+        let keyedDates = try #require(object["sampleEndDates"] as? [String: Any])
+        #expect(keyedDates["heartRate"] != nil)
+        #expect(keyedDates["stepCount"] != nil)
+        let decoded = try JSONDecoder().decode(HealthSnapshot.self, from: encoded)
+        #expect(decoded == snapshot)
+        #expect(decoded.sampleEndDates[.heartRate] == measuredAt)
+    }
+
     @Test("Legacy route coordinates retain the route_locations JSON key and pair format")
     func legacyRouteEncodingContract() throws {
         let start = Date(timeIntervalSince1970: 1_800_000_000)
