@@ -5,6 +5,64 @@ import WakTrainerCoreModels
 
 @Suite("Backward compatibility regression tests")
 struct BackwardCompatibilityTests {
+    @Test("Previously stored workout timing decodes without pause intervals")
+    func legacyWorkoutTimingDecoding() throws {
+        let original = WorkoutTiming(
+            startDate: Date(timeIntervalSince1970: 1_800_000_000),
+            endDate: Date(timeIntervalSince1970: 1_800_003_600),
+            elapsedDuration: 3_600,
+            activeDuration: 2_700,
+            pausedDuration: 900
+        )
+        let data = try JSONEncoder().encode(original)
+        let object = try #require(
+            JSONSerialization.jsonObject(with: data) as? [String: Any]
+        )
+        #expect(object["pauseIntervals"] == nil)
+
+        let decoded = try JSONDecoder().decode(WorkoutTiming.self, from: data)
+        #expect(decoded == original)
+        #expect(decoded.pauseIntervals.isEmpty)
+    }
+
+    @Test("Workout pause intervals survive serialization without changing existing totals")
+    func pauseIntervalRoundTrip() throws {
+        let start = Date(timeIntervalSince1970: 1_800_000_000)
+        let timing = WorkoutTiming(
+            startDate: start,
+            endDate: start.addingTimeInterval(3_600),
+            elapsedDuration: 3_600,
+            activeDuration: 2_700,
+            pausedDuration: 900,
+            pauseIntervals: [
+                WorkoutPauseInterval(
+                    startDate: start.addingTimeInterval(1_800),
+                    endDate: start.addingTimeInterval(2_700)
+                )
+            ]
+        )
+
+        let decoded = try JSONDecoder().decode(
+            WorkoutTiming.self,
+            from: JSONEncoder().encode(timing)
+        )
+        #expect(decoded == timing)
+        #expect(decoded.pauseIntervals.count == 1)
+        #expect(decoded.pauseIntervals[0].duration == 900)
+        #expect(decoded.activeDuration == 2_700)
+        #expect(decoded.pausedDuration == 900)
+    }
+
+    @Test("Reversed pause windows do not produce negative duration")
+    func invalidPauseIntervalDuration() {
+        let start = Date(timeIntervalSince1970: 1_800_000_000)
+        let interval = WorkoutPauseInterval(
+            startDate: start,
+            endDate: start.addingTimeInterval(-60)
+        )
+        #expect(interval.duration == 0)
+    }
+
     @Test("Legacy live health snapshots decode without measurement metadata")
     func legacyHealthSnapshotDecoding() throws {
         let legacy = Data(
